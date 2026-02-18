@@ -1,0 +1,55 @@
+﻿@model IEnumerable<ClientManagementSystem.Models.Contact>
+
+@{
+    ViewData["Title"] = "Contacts";
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<!-- Error message from TempData -->
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["Error"]
+    </div>
+}
+
+<a asp-action="Create" class="btn btn-primary mb-3">Create Contact</a>
+
+@if (!Model.Any())
+{
+    <p>No contact(s) found.</p>
+}
+else
+{
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th class="text-start">Name</th>
+                <th class="text-start">Surname</th>
+                <th class="text-start">Email Address</th>
+                <th class="text-center">No. of linked clients</th>
+                <th class="text-start">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var contact in Model)
+            {
+                <tr>
+                    <td class="text-start">@contact.Name</td>
+                    <td class="text-start">@contact.Surname</td>
+                    <td class="text-start">@contact.Email</td>
+                    <td class="text-center">@(contact.ClientContacts?.Count ?? 0)</td>
+                    <td class="text-start">
+                        <a asp-action="Edit" asp-route-id="@contact.ContactId">Edit</a>
+                        |
+                        <a asp-action="Delete" asp-route-id="@contact.ContactId"
+                           onclick="return confirm('Delete this contact? This cannot be undone.');">
+                            Delete
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

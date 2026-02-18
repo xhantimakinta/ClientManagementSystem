@@ -1,0 +1,122 @@
+@model ClientManagementSystem.Models.Client
+
+@{
+    ViewData["Title"] = "Edit Client";
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<form asp-action="Edit" method="post">
+    @Html.AntiForgeryToken()
+
+    <input type="hidden" asp-for="ClientId" />
+    <div asp-validation-summary="All" class="text-danger"></div>
+
+    <ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">General</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#contacts" type="button" role="tab">Contact(s)</button>
+        </li>
+    </ul>
+
+    <div class="tab-content border border-top-0 p-3">
+        <div class="tab-pane fade show active" id="general" role="tabpanel">
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label"></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Client Code</label>
+                <input value="@Model.ClientCode" class="form-control" readonly />
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="contacts" role="tabpanel">
+            @if (Model.ClientContacts != null && Model.ClientContacts.Any())
+            {
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th class="text-start">Contact Full Name</th>
+                            <th class="text-start">Email Address</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.ClientContacts.OrderBy(x => x.Contact.Surname).ThenBy(x => x.Contact.Name))
+                        {
+                            <tr>
+                                <td class="text-start">@item.Contact.Surname @item.Contact.Name</td>
+                                <td class="text-start">@item.Contact.Email</td>
+                                <td class="text-start">
+                                    <!-- URL/Form unlink as per spec (AJAX enhancement below) -->
+                                    <button type="submit"
+                                            class="btn btn-link p-0 unlink-link"
+                                            name="contactId"
+                                            value="@item.ContactId"
+                                            data-client="@Model.ClientId"
+                                            data-contact="@item.ContactId"
+                                            formaction="@Url.Action("Unlink", "Clients")"
+                                            formmethod="post">
+                                        Unlink
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p>No contacts found.</p>
+            }
+
+            <a asp-action="Link" asp-route-id="@Model.ClientId" class="btn btn-info btn-sm">Link Contact</a>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-success">Update</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        // AJAX unlink enhancement (still works as a normal URL POST without JS)
+        document.querySelectorAll(".unlink-link").forEach(btn => {
+            btn.addEventListener("click", function (e) {
+                const form = this.closest('form');
+                if (!form) return;
+
+                e.preventDefault();
+
+                const clientId = this.dataset.client;
+                const contactId = this.dataset.contact;
+                const row = this.closest("tr");
+
+                fetch('/Clients/UnlinkAjax', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        clientId: parseInt(clientId),
+                        contactId: parseInt(contactId)
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        row.remove();
+                    } else {
+                        form.submit();
+                    }
+                })
+                .catch(() => form.submit());
+            });
+        });
+    </script>
+}

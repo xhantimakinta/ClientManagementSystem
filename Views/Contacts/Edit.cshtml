@@ -1,0 +1,166 @@
+@using Microsoft.AspNetCore.Mvc.Rendering
+@model ClientManagementSystem.ViewModels.ContactEditViewModel
+
+@{
+    ViewData["Title"] = "Edit Contact";
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<form asp-action="Edit" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="ContactId" />
+
+    <div asp-validation-summary="All" class="text-danger"></div>
+
+    <ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">General</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#clients" type="button" role="tab">Client(s)</button>
+        </li>
+    </ul>
+
+    <div class="tab-content border border-top-0 p-3">
+        <div class="tab-pane fade show active" id="general" role="tabpanel">
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label"></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Surname" class="form-label"></label>
+                <input asp-for="Surname" class="form-control" />
+                <span asp-validation-for="Surname" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email" class="form-control" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="clients" role="tabpanel">
+
+            <!-- Link client (URL/Form-based as per spec) -->
+            <div class="d-flex gap-2 align-items-end mb-3">
+                <div class="flex-grow-1">
+                    <label class="form-label">Link Client</label>
+                    <select id="SelectedClientId" class="form-select">
+                        <option value="">-- Select a client --</option>
+                        @foreach (var c in (Model.AvailableClients ?? new List<ClientManagementSystem.Models.Client>()))
+                        {
+                            <option value="@c.ClientId">@c.Name</option>
+                        }
+                    </select>
+                </div>
+                <input type="hidden" name="clientId" id="linkClientId" value="" />
+                <button type="submit"
+                        class="btn btn-info"
+                        id="linkClientBtn"
+                        disabled
+                        formaction="@Url.Action("LinkClient", "Contacts")"
+                        formmethod="post">
+                    Link
+                </button>
+            </div>
+
+            @if (Model.LinkedClientContacts != null && Model.LinkedClientContacts.Any())
+            {
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th class="text-start">Client Name</th>
+                            <th class="text-start">Client Code</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.LinkedClientContacts.OrderBy(x => x.Client.Name))
+                        {
+                            <tr>
+                                <td class="text-start">@item.Client.Name</td>
+                                <td class="text-start">@item.Client.ClientCode</td>
+                                <td class="text-start">
+                                    <button type="submit"
+                                            class="btn btn-link p-0 unlink-client"
+                                            name="clientId"
+                                            value="@item.ClientId"
+                                            data-contact="@Model.ContactId"
+                                            data-client="@item.ClientId"
+                                            formaction="@Url.Action("UnlinkClient", "Contacts")"
+                                            formmethod="post">
+                                        Unlink
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p>No clients found.</p>
+            }
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-success">Update</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        // Enable Link button only when a client is selected
+        const selected = document.getElementById('SelectedClientId');
+        const linkClientId = document.getElementById('linkClientId');
+        const linkBtn = document.getElementById('linkClientBtn');
+
+        function syncLinkClient() {
+            const val = selected?.value;
+            linkClientId.value = val || '';
+            linkBtn.disabled = !val;
+        }
+
+        if (selected) {
+            selected.addEventListener('change', syncLinkClient);
+            syncLinkClient();
+        }
+
+        // Optional AJAX enhancement for unlink (still works as a normal URL POST without JS)
+        document.querySelectorAll(".unlink-client").forEach(btn => {
+            btn.addEventListener("click", function (e) {
+                e.preventDefault();
+
+                const btn = this;
+                const contactId = btn.dataset.contact;
+                const clientId = btn.dataset.client;
+                const row = btn.closest("tr");
+
+                fetch('/Contacts/UnlinkClientAjax', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contactId: parseInt(contactId),
+                        clientId: parseInt(clientId)
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        row.remove();
+                    } else {
+                        // Fallback to normal full post
+                        btn.closest('form').submit();
+                    }
+                })
+                .catch(() => btn.closest('form').submit());
+            });
+        });
+    </script>
+}

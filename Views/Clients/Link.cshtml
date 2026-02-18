@@ -1,0 +1,47 @@
+@model ClientManagementSystem.Models.Client
+
+@{
+    ViewData["Title"] = "Link Contact";
+
+    // ViewBag.AllContacts is populated in ClientsController.Link(GET)
+    var allContacts = ViewBag.AllContacts as List<ClientManagementSystem.Models.Contact> ?? new();
+
+    // Filter out contacts already linked to this client
+    var linkedIds = Model.ClientContacts?.Select(cc => cc.ContactId).ToHashSet() ?? new HashSet<int>();
+    var available = allContacts.Where(c => !linkedIds.Contains(c.ContactId)).ToList();
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<div class="mb-3">
+    <strong>Client:</strong> @Model.Name (<span>@Model.ClientCode</span>)
+</div>
+
+@if (!available.Any())
+{
+    <div class="alert alert-info">
+        All contacts are already linked to this client.
+    </div>
+    <a asp-action="Edit" asp-route-id="@Model.ClientId" class="btn btn-secondary">Back</a>
+}
+else
+{
+    <form asp-action="Link" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="clientId" value="@Model.ClientId" />
+
+        <div class="mb-3">
+            <label class="form-label">Select Contact</label>
+            <select name="contactId" class="form-select" required>
+                <option value="">-- Select a contact --</option>
+                @foreach (var c in available)
+                {
+                    <option value="@c.ContactId">@c.Surname @c.Name (@c.Email)</option>
+                }
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Link</button>
+        <a asp-action="Edit" asp-route-id="@Model.ClientId" class="btn btn-secondary">Cancel</a>
+    </form>
+}
